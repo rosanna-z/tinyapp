@@ -38,20 +38,25 @@ app.get("/urls/:id", (req, res) => {
 });
 
 app.post("/urls", (req, res) => {
-  console.log(req.body); // Log the POST request body to the console
-  res.send("Ok"); // Respond with 'Ok' (we will replace this)
+  console.log(req.body); // Log the POST request body to the consol
+  const id = generateRandomString();
+  urlDatabase[id] = req.body.longURL
+  res.redirect(`/urls/${id}`); 
 });
 
 function generateRandomString() {
   let string = '';
-  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890';
   for (var i = 0; i < 6; i++) {
     string += letters.charAt(Math.floor(Math.random() * letters.length));
   }
-  console.log(string);
   return string;
 }
 
+app.get("/u/:id", (req, res) => {
+  const longURL = urlDatabase[req.params.id]
+  res.redirect(longURL);
+});
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
