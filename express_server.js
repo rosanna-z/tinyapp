@@ -53,6 +53,15 @@ function generateRandomString() {
   return string;
 }
 
+
+app.post("/urls/:id/delete", (req, res) => {
+  const id = req.params.id
+  console.log(urlDatabase)
+  delete urlDatabase[id];
+  console.log(urlDatabase)
+  res.redirect(`/urls`); 
+});
+
 app.get("/u/:id", (req, res) => {
   const longURL = urlDatabase[req.params.id]
   res.redirect(longURL);
