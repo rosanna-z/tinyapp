@@ -49,6 +49,17 @@ app.post("/urls", (req, res) => {
   res.redirect(`/urls/${id}`); 
 });
 
+app.get("/register", (req, res) => {
+  const username = req.cookies === undefined ? "" : req.cookies["username"];
+  const templateVars = { username } ;
+  res.render("registration", templateVars);
+});
+
+app.post("/register", (req, res) => {
+  
+  res.redirect(`/urls`); 
+});
+
 function generateRandomString() {
   let string = '';
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890';
