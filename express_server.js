@@ -1,8 +1,10 @@
 const express = require("express");
+var cookie = require('cookie');
 const app = express();
 const PORT = 8080; // default port 8080
 
 app.set("view engine", "ejs");
+
 
 const urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
@@ -68,10 +70,22 @@ app.post("/urls/:id/edit", (req, res) => {
   res.redirect(`/urls`); 
 });
 
+app.post("/urls/login", (req, res) => {
+  res.cookie('username', req.body.username)
+  res.redirect(`/urls`); 
+});
+
 app.get("/u/:id", (req, res) => {
   const longURL = urlDatabase[req.params.id]
   res.redirect(longURL);
 });
+
+
+const templateVars = {
+  username: req.cookies["username"],
+  // ... any other vars
+};
+res.render("urls_index", templateVars);
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
