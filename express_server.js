@@ -1,5 +1,6 @@
 const express = require("express");
 var cookieParser = require('cookie-parser');
+const bcrypt = require("bcryptjs");
 const app = express();
 const PORT = 8080; // default port 8080
 
@@ -9,20 +10,35 @@ app.use(express.urlencoded({ extended: true }));
 
 
 const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
+  b6UTxQ: {
+    longURL: "https://www.tsn.ca",
+    userID: "aJ48lW",
+  },
+  i3BoGr: {
+    longURL: "https://www.google.ca",
+    userID: "aJ48lW",
+  },
+  sgq3y6: {
+    longURL: "https://www.google.ca",
+    userID: "aJ48lW",
+  },
 };
 
 const users = {
   userRandomID: {
     id: "userRandomID",
     email: "user@example.com",
-    password: "purple-monkey-dinosaur",
+    password: "abc",
   },
   user2RandomID: {
     id: "user2RandomID",
     email: "user2@example.com",
-    password: "dishwasher-funk",
+    password: "abc",
+  },
+  aJ48lW: {
+    id: "aJ48lW",
+    email: "a@a.com",
+    password: "123",
   },
 };
 
@@ -45,6 +61,16 @@ function generateRandomString() {
   return string;
 }
 
+function urlsForUser(id) {
+  let list = {};
+  for (const shortURL in urlDatabase) {
+    if (id === urlDatabase[shortURL].userID) {
+      list[shortURL] = urlDatabase[shortURL];
+    }
+  }
+  return list;
+}
+
 app.get("/", (req, res) => {
   res.send("Hello!");
 });
@@ -58,48 +84,81 @@ app.get("/hello", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  const email = users[req.cookies["user_id"]]?.email;
-  const templateVars = { urls: urlDatabase, email };
+  const userId = req.cookies["user_id"];
+  const urls = urlsForUser(userId);
+  const email = users[userId]?.email;
+  const templateVars = { urls: urls, email };
+
+  if (!email) {
+    return res.send('Please <a href=/register>register</a> or <a href=/login>sign in</a>.');
+  }
   res.render("urls_index", templateVars);
 });
 
 app.get("/urls/new", (req, res) => {
   const email = users[req.cookies["user_id"]]?.email;
-  const templateVars = { email };
+
   if (!email) {
     return res.redirect(`/login`);
   }
-  res.render("urls_new", templateVars);
+
+  res.render("urls_new", { email });
 });
 
 app.get("/urls/:id", (req, res) => {
-    if (!urlDatabase[req.params.id]) {
-      return res.send("This shorten URL does not exist.")
-    }
-  
-  const templateVars = { id: req.params.id, longURL: urlDatabase[req.params.id], email: users[req.cookies["user_id"]]?.email };
+  const userId = req.cookies["user_id"];
+  const urls = urlsForUser(userId);
+
+  // if user is not logged in
+  if (!userId) {
+    return res.send("You are not logged in. Please <a href=/register>register</a> or <a href=/login>sign in</a>.");
+  }
+
+  // if short url does not exist in database
+  if (!urlDatabase[req.params.id]) {
+    return res.send("This shorten URL does not exist.");
+  }
+
+  const urlData = urlDatabase[req.params.id]
+
+  // if user does not own the URL
+  if (userId !== urlDatabase[req.params.id].userID){
+    return res.send("You do not own this URL.");
+  }
+
+  const templateVars = { urls : {id : req.params.id, longURL: urlData.longURL}, email : users[req.cookies["user_id"]]?.email}
+
+  // const templateVars = { urls: urls, email: users[req.cookies["user_id"]]?.email };
   res.render("urls_show", templateVars);
 });
 
 app.post("/urls", (req, res) => {
-  const email = users[req.cookies["user_id"]]?.email;
-  if (!email) {
-    return res.send("<div>You are not logged in.</div>")
+
+  // if user is not logged in
+  const userId = req.cookies["user_id"];
+  if (!userId) {
+    return res.send("You are not logged in. Please <a href=/register>register</a> or <a href=/login>sign in</a>.");
   }
+
+  // creates new URL and add into database
   const id = generateRandomString();
-  urlDatabase[id] = req.body.longURL;
+  const longURL = req.body.longURL;
+  urlDatabase[id] = {
+    longURL,
+    userID: req.cookies["user_id"]
+  };
+
   res.redirect(`/urls/${id}`);
 });
 
 app.get("/register", (req, res) => {
   const email = users[req.cookies["user_id"]]?.email;
-  const templateVars = { email };
 
   if (email) {
     res.redirect(`/urls`);
   }
 
-  res.render("registration", templateVars);
+  res.render("registration", { email });
 });
 
 app.post("/register", (req, res) => {
@@ -122,12 +181,29 @@ app.post("/register", (req, res) => {
     email,
     password
   };
-
+  console.log(users);
   res.cookie('user_id', newUserId);
   res.redirect(`/urls`);
 });
 
 app.post("/urls/:id/delete", (req, res) => {
+  const userId = req.cookies["user_id"];
+
+  // if user is not logged in
+  if (!userId) {
+    return res.send("You are not logged in. Please <a href=/register>register</a> or <a href=/login>sign in</a>.");
+  }
+
+  // if shortURL doesn't exist in database
+  if (!urlDatabase[req.params.id]) {
+    return res.send('This URL does not exist!');
+  }
+
+  // // if user doesnt own the URL
+  if (userId !== urlDatabase[req.params.id].userID){
+    return res.send("You do not own this URL.");
+  }
+
   const id = req.params.id;
   delete urlDatabase[id];
   res.redirect(`/urls`);
@@ -135,8 +211,28 @@ app.post("/urls/:id/delete", (req, res) => {
 
 app.post("/urls/:id/edit", (req, res) => {
   const newURL = req.body.newURL;
-  const id = req.params.id;
-  urlDatabase[id] = newURL;
+  const userId = req.cookies["user_id"];
+
+  // if user is not logged in
+  if (!userId) {
+    return res.send("You are not logged in. Please <a href=/register>register</a> or <a href=/login>sign in</a>.");
+  }
+
+  // if shortURL doesn't exist in database
+  if (!urlDatabase[req.params.id]) {
+    return res.send('This URL does not exist!');
+  }
+
+  // // if user doesnt own the URL
+  if (userId !== urlDatabase[req.params.id].userID){
+    return res.send("You do not own this URL.");
+  }
+
+  // creates new URL in database
+  urlDatabase[req.params.id] = {
+    longURL: newURL,
+    userID: req.cookies["user_id"]
+  };
   res.redirect(`/urls`);
 });
 
@@ -185,7 +281,7 @@ app.post("/urls/logout", (req, res) => {
 });
 
 app.get("/u/:id", (req, res) => {
-  const longURL = urlDatabase[req.params.id];
+  const longURL = urlDatabase[req.params.id].longURL;
   res.redirect(longURL);
 });
 
