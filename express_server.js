@@ -123,9 +123,36 @@ app.post("/urls/:id/edit", (req, res) => {
   res.redirect(`/urls`); 
 });
 
+app.get("/login", (req, res) => {
+  const email = users[req.cookies["user_id"]]?.email;
+  const templateVars = { email } ;
+  res.render("login", templateVars);
+});
+
+app.post("/login", (req, res) => {
+  const email = req.body.email
+  const password = req.body.password
+
+  if (!email || !password) {
+    return res.status(400).send('Please include both email and password');
+  }
+
+  const user = findUserbyEmail(email)
+  if (!user) {
+    return res.status(400).send('This email does not exist.');
+  }
+
+  if (user.password !== password) {
+    return res.status(400).send('The password is incorrect.');
+  }
+
+  res.cookie('user_id', user.id);
+
+  res.redirect(`/urls`); 
+});
+
 app.post("/urls/login", (req, res) => {
   const email = req.body.email
-
   res.cookie('user_id', userDb.id)
   res.redirect(`/urls`); 
 });
