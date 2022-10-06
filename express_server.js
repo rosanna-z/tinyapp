@@ -28,17 +28,12 @@ const users = {
   userRandomID: {
     id: "userRandomID",
     email: "user@example.com",
-    password: "abc",
+    password: "$2a$10$6/9Sff5M1/9XtbCMtWhs9urT/O1XfQvqMjBpp47e1iJAkln1B7aS6",
   },
   user2RandomID: {
     id: "user2RandomID",
     email: "user2@example.com",
-    password: "abc",
-  },
-  aJ48lW: {
-    id: "aJ48lW",
-    email: "a@a.com",
-    password: "123",
+    password: "$2a$10$HxptVMBx0GGOR8UyAqVSfOF6lcL89nEHtbD1MlzcUFk8fxcu.fZtu",
   },
 };
 
@@ -174,14 +169,20 @@ app.post("/register", (req, res) => {
     return res.status(400).send('Sorry! This email is taken!');
   }
 
+  // create new user
   const newUserId = generateRandomString();
+  const salt = bcrypt.genSaltSync(10);
+  const hash = bcrypt.hashSync(password, salt);
 
   users[newUserId] = {
     id: newUserId,
     email,
-    password
+    password: hash
   };
-  console.log(users);
+  console.log(hash)
+  // check if new user matches with the users database
+  // console.log(users);
+
   res.cookie('user_id', newUserId);
   res.redirect(`/urls`);
 });
@@ -252,16 +253,17 @@ app.post("/login", (req, res) => {
   const password = req.body.password;
 
   if (!email || !password) {
-    return res.status(400).send('Please include both email and password.');
+    return res.send('Please include both email and password.');
   }
 
   const user = findUserbyEmail(email);
   if (!user) {
-    return res.status(403).send('This email does not exist.');
+    return res.send('This email does not exist.');
   }
 
-  if (user.password !== password) {
-    return res.status(403).send('The password is incorrect.');
+  const result = bcrypt.compareSync(password, user.password);
+  if (!bcrypt.compareSync(password, user.password)) {
+    return res.send('This password is incorrect.');
   }
 
   res.cookie('user_id', user.id);
