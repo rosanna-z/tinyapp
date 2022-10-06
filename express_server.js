@@ -134,16 +134,16 @@ app.post("/login", (req, res) => {
   const password = req.body.password
 
   if (!email || !password) {
-    return res.status(400).send('Please include both email and password');
+    return res.status(400).send('Please include both email and password.');
   }
 
   const user = findUserbyEmail(email)
   if (!user) {
-    return res.status(400).send('This email does not exist.');
+    return res.status(403).send('This email does not exist.');
   }
 
   if (user.password !== password) {
-    return res.status(400).send('The password is incorrect.');
+    return res.status(403).send('The password is incorrect.');
   }
 
   res.cookie('user_id', user.id);
