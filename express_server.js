@@ -1,5 +1,7 @@
+const { findUserbyEmail, urlsForUser, generateRandomString } = require('./helpers');
 const express = require("express");
 const cookieSession = require('cookie-session');
+
 const bcrypt = require("bcryptjs");
 const app = express();
 const PORT = 8080; // default port 8080
@@ -42,35 +44,6 @@ const users = {
   },
 };
 
-function findUserbyEmail(email) {
-  for (const userId in users) {
-    const userDb = users[userId];
-    if (userDb.email === email) {
-      return userDb;
-    }
-    return null;
-  }
-}
-
-function generateRandomString() {
-  let string = '';
-  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890';
-  for (var i = 0; i < 6; i++) {
-    string += letters.charAt(Math.floor(Math.random() * letters.length));
-  }
-  return string;
-}
-
-function urlsForUser(id) {
-  let list = {};
-  for (const shortURL in urlDatabase) {
-    if (id === urlDatabase[shortURL].userID) {
-      list[shortURL] = urlDatabase[shortURL];
-    }
-  }
-  return list;
-}
-
 app.get("/", (req, res) => {
   res.send("Hello!");
 });
@@ -85,7 +58,7 @@ app.get("/hello", (req, res) => {
 
 app.get("/urls", (req, res) => {
   const userId = req.session.user_id;
-  const urls = urlsForUser(userId);
+  const urls = urlsForUser(userId, urlDatabase);
   const email = users[userId]?.email;
   const templateVars = { urls: urls, email };
 
@@ -107,7 +80,7 @@ app.get("/urls/new", (req, res) => {
 
 app.get("/urls/:id", (req, res) => {
   const userId = req.session.user_id;
-  const urls = urlsForUser(userId);
+  const urls = urlsForUser(userId, urlDatabase);
 
   // if user is not logged in
   if (!userId) {
@@ -119,14 +92,14 @@ app.get("/urls/:id", (req, res) => {
     return res.send("This shorten URL does not exist.");
   }
 
-  const urlData = urlDatabase[req.params.id]
+  const urlData = urlDatabase[req.params.id];
 
   // if user does not own the URL
-  if (userId !== urlDatabase[req.params.id].userID){
+  if (userId !== urlDatabase[req.params.id].userID) {
     return res.send("You do not own this URL.");
   }
 
-  const templateVars = { urls : {id : req.params.id, longURL: urlData.longURL}, email : users[req.session.user_id]?.email}
+  const templateVars = { urls: { id: req.params.id, longURL: urlData.longURL }, email: users[req.session.user_id]?.email };
   res.render("urls_show", templateVars);
 });
 
@@ -164,12 +137,12 @@ app.post("/register", (req, res) => {
   const password = req.body.password;
 
   if (!email || !password) {
-    return res.status(400).send('Please include both email and password');
+    return res.send('Please include both email and password');
   }
 
-  const userDb = findUserbyEmail(email);
+  const userDb = findUserbyEmail(email, users);
   if (userDb) {
-    return res.status(400).send('Sorry! This email is taken!');
+    return res.send('Sorry! This email is taken!');
   }
 
   // create new user
@@ -182,7 +155,7 @@ app.post("/register", (req, res) => {
     email,
     password: hash
   };
-  console.log(hash)
+  console.log(hash);
   // check if new user matches with the users database
   // console.log(users);
 
@@ -204,7 +177,7 @@ app.post("/urls/:id/delete", (req, res) => {
   }
 
   // // if user doesnt own the URL
-  if (userId !== urlDatabase[req.params.id].userID){
+  if (userId !== urlDatabase[req.params.id].userID) {
     return res.send("You do not own this URL.");
   }
 
@@ -228,7 +201,7 @@ app.post("/urls/:id/edit", (req, res) => {
   }
 
   // // if user doesnt own the URL
-  if (userId !== urlDatabase[req.params.id].userID){
+  if (userId !== urlDatabase[req.params.id].userID) {
     return res.send("You do not own this URL.");
   }
 
@@ -255,33 +228,34 @@ app.post("/login", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
 
+  // if missing email or password
   if (!email || !password) {
     return res.send('Please include both email and password.');
   }
-
-  const user = findUserbyEmail(email);
+  // if email does not exist in database
+  const user = findUserbyEmail(email, users);
   if (!user) {
     return res.send('This email does not exist.');
   }
-
+  // checks password
   const result = bcrypt.compareSync(password, user.password);
   if (!bcrypt.compareSync(password, user.password)) {
     return res.send('This password is incorrect.');
   }
-
+  // creates a cookie
   req.session.user_id = user.id;
-
   res.redirect(`/urls`);
 });
 
 app.post("/urls/login", (req, res) => {
-  const email = req.body.email;
-  rereq.session.user_id = userDb.id;
+  // creates the cookie
+  req.session.user_id = userDb.id;
   res.redirect(`/urls`);
 });
 
 app.post("/urls/logout", (req, res) => {
-  req.session = null
+  // removes the cookie
+  req.session = null;
   res.redirect(`/urls`);
 });
 
@@ -293,3 +267,4 @@ app.get("/u/:id", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
+
