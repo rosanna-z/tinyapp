@@ -1,13 +1,18 @@
 const express = require("express");
-var cookieParser = require('cookie-parser');
+const cookieSession = require('cookie-session');
 const bcrypt = require("bcryptjs");
 const app = express();
 const PORT = 8080; // default port 8080
 
+// config
 app.set("view engine", "ejs");
-app.use(cookieParser());
-app.use(express.urlencoded({ extended: true }));
 
+// middleware
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieSession({
+  name: 'cookie',
+  keys: ['randomkeyslsjdfsdv']
+}));
 
 const urlDatabase = {
   b6UTxQ: {
@@ -79,7 +84,7 @@ app.get("/hello", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  const userId = req.cookies["user_id"];
+  const userId = req.session.user_id;
   const urls = urlsForUser(userId);
   const email = users[userId]?.email;
   const templateVars = { urls: urls, email };
@@ -91,7 +96,7 @@ app.get("/urls", (req, res) => {
 });
 
 app.get("/urls/new", (req, res) => {
-  const email = users[req.cookies["user_id"]]?.email;
+  const email = users[req.session.user_id]?.email;
 
   if (!email) {
     return res.redirect(`/login`);
@@ -101,7 +106,7 @@ app.get("/urls/new", (req, res) => {
 });
 
 app.get("/urls/:id", (req, res) => {
-  const userId = req.cookies["user_id"];
+  const userId = req.session.user_id;
   const urls = urlsForUser(userId);
 
   // if user is not logged in
@@ -121,16 +126,14 @@ app.get("/urls/:id", (req, res) => {
     return res.send("You do not own this URL.");
   }
 
-  const templateVars = { urls : {id : req.params.id, longURL: urlData.longURL}, email : users[req.cookies["user_id"]]?.email}
-
-  // const templateVars = { urls: urls, email: users[req.cookies["user_id"]]?.email };
+  const templateVars = { urls : {id : req.params.id, longURL: urlData.longURL}, email : users[req.session.user_id]?.email}
   res.render("urls_show", templateVars);
 });
 
 app.post("/urls", (req, res) => {
 
   // if user is not logged in
-  const userId = req.cookies["user_id"];
+  const userId = req.session.user_id;
   if (!userId) {
     return res.send("You are not logged in. Please <a href=/register>register</a> or <a href=/login>sign in</a>.");
   }
@@ -140,14 +143,14 @@ app.post("/urls", (req, res) => {
   const longURL = req.body.longURL;
   urlDatabase[id] = {
     longURL,
-    userID: req.cookies["user_id"]
+    userID: req.session.user_id
   };
 
   res.redirect(`/urls/${id}`);
 });
 
 app.get("/register", (req, res) => {
-  const email = users[req.cookies["user_id"]]?.email;
+  const email = users[req.session.user_id]?.email;
 
   if (email) {
     res.redirect(`/urls`);
@@ -183,12 +186,12 @@ app.post("/register", (req, res) => {
   // check if new user matches with the users database
   // console.log(users);
 
-  res.cookie('user_id', newUserId);
+  req.session.user_id = newUserId;
   res.redirect(`/urls`);
 });
 
 app.post("/urls/:id/delete", (req, res) => {
-  const userId = req.cookies["user_id"];
+  const userId = req.session.user_id;
 
   // if user is not logged in
   if (!userId) {
@@ -212,7 +215,7 @@ app.post("/urls/:id/delete", (req, res) => {
 
 app.post("/urls/:id/edit", (req, res) => {
   const newURL = req.body.newURL;
-  const userId = req.cookies["user_id"];
+  const userId = req.session.user_id;
 
   // if user is not logged in
   if (!userId) {
@@ -232,13 +235,13 @@ app.post("/urls/:id/edit", (req, res) => {
   // creates new URL in database
   urlDatabase[req.params.id] = {
     longURL: newURL,
-    userID: req.cookies["user_id"]
+    userID: req.session.user_id
   };
   res.redirect(`/urls`);
 });
 
 app.get("/login", (req, res) => {
-  const email = users[req.cookies["user_id"]]?.email;
+  const email = users[req.session.user_id]?.email;
   const templateVars = { email };
 
   if (email) {
@@ -266,19 +269,19 @@ app.post("/login", (req, res) => {
     return res.send('This password is incorrect.');
   }
 
-  res.cookie('user_id', user.id);
+  req.session.user_id = user.id;
 
   res.redirect(`/urls`);
 });
 
 app.post("/urls/login", (req, res) => {
   const email = req.body.email;
-  res.cookie('user_id', userDb.id);
+  rereq.session.user_id = userDb.id;
   res.redirect(`/urls`);
 });
 
 app.post("/urls/logout", (req, res) => {
-  res.clearCookie('user_id', req.body.email);
+  req.session = null
   res.redirect(`/urls`);
 });
 
