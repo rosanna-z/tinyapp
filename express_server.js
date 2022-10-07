@@ -46,20 +46,23 @@ const users = {
 
 app.get("/urls", (req, res) => {
   const userId = req.session.user_id;
+  const user = users[userId]
+  // if user is not logged in
+  if (!user) {
+    return res.render("error.ejs", { email: users[req.session.user_id]?.email });
+  }
+
   const urls = urlsForUser(userId, urlDatabase);
   const email = users[userId]?.email;
   const templateVars = { urls: urls, email };
-
-  if (!email) {
-    return res.render("error.ejs", { email: users[req.session.user_id]?.email });
-  }
   res.render("urls_index", templateVars);
 });
 
 app.get("/urls/new", (req, res) => {
-  const email = users[req.session.user_id]?.email;
-
-  if (!email) {
+  const userId = req.session.user_id;
+  const user = users[userId]
+  // if user is not logged in
+  if (!user) {
     return res.redirect(`/login`);
   }
 
@@ -68,26 +71,25 @@ app.get("/urls/new", (req, res) => {
 
 app.get("/urls/:id", (req, res) => {
   const userId = req.session.user_id;
-  const urls = urlsForUser(userId, urlDatabase);
-
+  const user = users[userId]
   // if user is not logged in
-  if (!userId) {
+  if (!user) {
     return res.render("error.ejs", { email: users[req.session.user_id]?.email });
   }
 
+  const shortURL = urlDatabase[req.params.id];
   // if short url does not exist in database
-  if (!urlDatabase[req.params.id]) {
+  if (!shortURL) {
     return res.send("This shorten URL does not exist.");
   }
 
-  const urlData = urlDatabase[req.params.id];
-
   // if user does not own the URL
-  if (userId !== urlDatabase[req.params.id].userID) {
+  if (userId !== shortURL.userID) {
     return res.send("You do not own this URL.");
   }
 
-  const templateVars = { urls: { id: req.params.id, longURL: urlData.longURL }, email: users[req.session.user_id]?.email };
+  // const urls = urlsForUser(userId, urlDatabase);
+  const templateVars = { urls: { id: req.params.id, longURL: urlDatabase.longURL }, email: users[req.session.user_id]?.email };
   res.render("urls_show", templateVars);
 });
 
@@ -153,9 +155,9 @@ app.post("/register", (req, res) => {
 
 app.post("/urls/:id/delete", (req, res) => {
   const userId = req.session.user_id;
-
+  const user = users[userId]
   // if user is not logged in
-  if (!userId) {
+  if (!user) {
     return res.render("error.ejs", { email: users[req.session.user_id]?.email });
   }
 
@@ -175,11 +177,10 @@ app.post("/urls/:id/delete", (req, res) => {
 });
 
 app.post("/urls/:id", (req, res) => {
-  const newURL = req.body.newURL;
   const userId = req.session.user_id;
-
+  const user = users[userId]
   // if user is not logged in
-  if (!userId) {
+  if (!user) {
     return res.render("error.ejs", { email: users[req.session.user_id]?.email });
   }
 
@@ -193,6 +194,7 @@ app.post("/urls/:id", (req, res) => {
     return res.send("You do not own this URL.");
   }
 
+  const newURL = req.body.newURL;
   // creates new URL in database
   urlDatabase[req.params.id] = {
     longURL: newURL,
@@ -202,13 +204,17 @@ app.post("/urls/:id", (req, res) => {
 });
 
 app.get("/login", (req, res) => {
-  const email = users[req.session.user_id]?.email;
-  const templateVars = { email };
+  const userId = req.session.user_id;
+  const user = users[userId]
 
-  if (email) {
+  console.log(users)
+  // if user is logged in
+  if (user) {
     res.redirect(`/urls`);
   }
 
+  const email = users[req.session.user_id]?.email;
+  const templateVars = { email };
   res.render("login", templateVars);
 });
 
@@ -235,13 +241,7 @@ app.post("/login", (req, res) => {
   res.redirect(`/urls`);
 });
 
-app.post("/urls/login", (req, res) => {
-  // creates the cookie
-  req.session.user_id = userDb.id;
-  res.redirect(`/urls`);
-});
-
-app.post("/urls/logout", (req, res) => {
+app.post("/logout", (req, res) => {
   // removes the cookie
   req.session = null;
   res.redirect(`/urls`);
@@ -258,13 +258,14 @@ app.get("/u/:id", (req, res) => {
 });
 
 app.get("/", (req, res) => {
-  if (!userId) {
-    res.redirect(`/login`);
+  const userId = req.session.user_id;
+  const user = users[userId]
+  // if user is not logged in
+  if (!user) {
+    return res.render("error.ejs", { email: users[req.session.user_id]?.email });
   }
 
-    const userId = req.session.user_id;
-
-    // if user is not logged in
+    // if user is logged in
     if (userId) {
       res.redirect(`/urls`);
     }

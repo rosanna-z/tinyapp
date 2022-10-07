@@ -4,8 +4,8 @@ const findUserbyEmail = function(email, database) {
     if (userDb.email === email) {
       return userDb;
     }
-    return null;
   }
+  return null;
 };
 
 function urlsForUser(id, database) {
