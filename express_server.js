@@ -207,7 +207,6 @@ app.get("/login", (req, res) => {
   const userId = req.session.user_id;
   const user = users[userId]
 
-  console.log(users)
   // if user is logged in
   if (user) {
     res.redirect(`/urls`);
