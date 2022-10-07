@@ -44,18 +44,6 @@ const users = {
   },
 };
 
-app.get("/", (req, res) => {
-  res.send("Hello!");
-});
-
-app.get("/urls.json", (req, res) => {
-  res.json(urlDatabase);
-});
-
-app.get("/hello", (req, res) => {
-  res.send("<html><body>Hello <b>World</b></body></html>\n");
-});
-
 app.get("/urls", (req, res) => {
   const userId = req.session.user_id;
   const urls = urlsForUser(userId, urlDatabase);
@@ -63,7 +51,7 @@ app.get("/urls", (req, res) => {
   const templateVars = { urls: urls, email };
 
   if (!email) {
-    return res.send('Please <a href=/register>register</a> or <a href=/login>sign in</a>.');
+    return res.render("error.ejs", { email: users[req.session.user_id]?.email });
   }
   res.render("urls_index", templateVars);
 });
@@ -84,7 +72,7 @@ app.get("/urls/:id", (req, res) => {
 
   // if user is not logged in
   if (!userId) {
-    return res.send("You are not logged in. Please <a href=/register>register</a> or <a href=/login>sign in</a>.");
+    return res.render("error.ejs", { email: users[req.session.user_id]?.email });
   }
 
   // if short url does not exist in database
@@ -108,7 +96,7 @@ app.post("/urls", (req, res) => {
   // if user is not logged in
   const userId = req.session.user_id;
   if (!userId) {
-    return res.send("You are not logged in. Please <a href=/register>register</a> or <a href=/login>sign in</a>.");
+    return res.render("error.ejs", { email: users[req.session.user_id]?.email });
   }
 
   // creates new URL and add into database
@@ -142,7 +130,7 @@ app.post("/register", (req, res) => {
 
   const userDb = findUserbyEmail(email, users);
   if (userDb) {
-    return res.send('Sorry! This email is taken!');
+    return res.send('Oops! This email is taken. Please use a different one.');
   }
 
   // create new user
@@ -155,7 +143,7 @@ app.post("/register", (req, res) => {
     email,
     password: hash
   };
-  console.log(hash);
+
   // check if new user matches with the users database
   // console.log(users);
 
@@ -168,7 +156,7 @@ app.post("/urls/:id/delete", (req, res) => {
 
   // if user is not logged in
   if (!userId) {
-    return res.send("You are not logged in. Please <a href=/register>register</a> or <a href=/login>sign in</a>.");
+    return res.render("error.ejs", { email: users[req.session.user_id]?.email });
   }
 
   // if shortURL doesn't exist in database
@@ -186,13 +174,13 @@ app.post("/urls/:id/delete", (req, res) => {
   res.redirect(`/urls`);
 });
 
-app.post("/urls/:id/edit", (req, res) => {
+app.post("/urls/:id", (req, res) => {
   const newURL = req.body.newURL;
   const userId = req.session.user_id;
 
   // if user is not logged in
   if (!userId) {
-    return res.send("You are not logged in. Please <a href=/register>register</a> or <a href=/login>sign in</a>.");
+    return res.render("error.ejs", { email: users[req.session.user_id]?.email });
   }
 
   // if shortURL doesn't exist in database
@@ -240,7 +228,7 @@ app.post("/login", (req, res) => {
   // checks password
   const result = bcrypt.compareSync(password, user.password);
   if (!bcrypt.compareSync(password, user.password)) {
-    return res.send('This password is incorrect.');
+    return res.send('This password is incorrect. Please try again.');
   }
   // creates a cookie
   req.session.user_id = user.id;
@@ -260,9 +248,27 @@ app.post("/urls/logout", (req, res) => {
 });
 
 app.get("/u/:id", (req, res) => {
+  // if URL doesn't exist in database
+  if (req.params.id !== urlDatabase[req.params.id]) {
+    return res.send('This URL does not exist!');
+  }
+
   const longURL = urlDatabase[req.params.id].longURL;
   res.redirect(longURL);
 });
+
+app.get("/", (req, res) => {
+  if (!userId) {
+    res.redirect(`/login`);
+  }
+
+    const userId = req.session.user_id;
+
+    // if user is not logged in
+    if (userId) {
+      res.redirect(`/urls`);
+    }
+  });
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
