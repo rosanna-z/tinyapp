@@ -66,7 +66,7 @@ app.get("/urls/new", (req, res) => {
     return res.redirect(`/login`);
   }
 
-  res.render("urls_new", { email });
+  res.render("urls_new", { email: users[req.session.user_id]?.email });
 });
 
 app.get("/urls/:id", (req, res) => {
@@ -89,7 +89,7 @@ app.get("/urls/:id", (req, res) => {
   }
 
   // const urls = urlsForUser(userId, urlDatabase);
-  const templateVars = { urls: { id: req.params.id, longURL: urlDatabase.longURL }, email: users[req.session.user_id]?.email };
+  const templateVars = { urls: { id: req.params.id, longURL: urlDatabase[req.params.id].longURL }, email: users[req.session.user_id]?.email };
   res.render("urls_show", templateVars);
 });
 
@@ -247,8 +247,8 @@ app.post("/logout", (req, res) => {
 });
 
 app.get("/u/:id", (req, res) => {
-  // if URL doesn't exist in database
-  if (req.params.id !== urlDatabase[req.params.id]) {
+  // if shortURL doesn't exist in database
+  if (!urlDatabase[req.params.id]) {
     return res.send('This URL does not exist!');
   }
 
